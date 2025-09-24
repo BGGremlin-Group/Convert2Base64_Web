@@ -68,9 +68,6 @@ Drop any file → instant Base-64, raw SVG, CSS or HTML. No installs, no servers
 - File → Base-64 data-uri only  
 - Drag-and-drop + glitch easter-eggs
 
-V1. Web
-V2. webV2
-V3. Pro (current)
 ---
 
 ## 🧪 Browser Support
