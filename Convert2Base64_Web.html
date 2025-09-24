@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Base64 Encoder Node :: BG GREMLIN GROUP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    /* ---------- CRT / terminal reset ---------- */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #000;
+      color: #39ff14;
+      font-family: "Courier New", monospace;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: filter .3s;
+    }
+    /* scanlines */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,.18) 0,
+        rgba(0,0,0,.18) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 1000;
+    }
+    /* datamosh flicker */
+    @keyframes flick {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .92; }
+    }
+    @keyframes glitch {
+      0% { filter: invert(0) hue-rotate(0); }
+      20% { filter: invert(1) hue-rotate(90deg); }
+      40% { filter: invert(0) hue-rotate(180deg); }
+      60% { filter: invert(1) hue-rotate(270deg); }
+      80% { filter: invert(0) hue-rotate(360deg); }
+      100% { filter: none; }
+    }
+    header {
+      position: absolute;
+      top: 1rem;
+      text-align: center;
+      animation: flick .12s infinite;
+    }
+    h1 { font-size: 1.4rem; letter-spacing: .2em; text-shadow: 0 0 6px #39ff14; }
+    .sub { font-size: .7rem; color: #adadad; margin-top: .3rem; }
+
+    /* THREE canvas holder */
+    #bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+    }
+
+    /* central console */
+    #console {
+      width: 90%;
+      max-width: 700px;
+      background: rgba(10,25,10,.85);
+      border: 1px solid #39ff14;
+      box-shadow: 0 0 15px #39ff14, inset 0 0 10px rgba(57,255,20,.4);
+      padding: 1.5rem;
+      z-index: 10;
+    }
+    #screen {
+      background: #000;
+      border: 1px solid #39ff14;
+      padding: .8rem;
+      min-height: 200px;
+      font-size: .8rem;
+      white-space: pre-wrap;
+      overflow-y: auto;
+      max-height: 40vh;
+    }
+    .cmd { color: #39ff14; }
+    .err { color: #ff4d00; }
+    .ok  { color: #39ff14; }
+
+    /* file selector hidden but triggered by big red button */
+    input[type=file] { display: none; }
+    #trigger {
+      margin-top: 1rem;
+      width: 100%;
+      padding: .8rem;
+      background: #000;
+      border: 2px solid #39ff14;
+      color: #39ff14;
+      font-family: inherit;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: .2s;
+      text-transform: uppercase;
+      letter-spacing: .15em;
+    }
+    #trigger:hover {
+      background: #39ff14;
+      color: #000;
+      box-shadow: 0 0 20px #39ff14;
+    }
+    #trigger:active { transform: scale(.98); }
+
+    footer {
+      position: absolute;
+      bottom: 1rem;
+      font-size: .6rem;
+      color: #444;
+      text-align: center;
+    }
+
+    /* ---------- REDACTED mode ---------- */
+    body.redacted {
+      color: #ff003c;
+      --glow: #ff003c;
+    }
+    body.redacted #console,
+    body.redacted #screen,
+    body.redacted #trigger {
+      border-color: #ff003c;
+      box-shadow: 0 0 15px #ff003c, inset 0 0 10px rgba(255,0,60,.4);
+    }
+    body.redacted h1 { text-shadow: 0 0 6px #ff003c; }
+    body.redacted .sub { color: #6b0000; }
+  </style>
+</head>
+<body>
+  <div id="bg"></div>
+
+  <header>
+    <h1>[Convert 2 Base64]</h1>
+    <div class="sub">// uplink to base64 encoder node // classified // BGGG active</div>
+  </header>
+
+  <main id="console">
+    <div id="screen"></div>
+    <input type="file" id="picker" multiple accept="*/*"/>
+    <button id="trigger">[INITIATE]</button>
+  </main>
+
+  <footer>
+    <span id="q">queue: 0</span> · bggg systems · do not distribute
+  </footer>
+
+  <!-- three.min.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    /* ========== THREE.JS BACKDROP ========== */
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 1000);
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(innerWidth, innerHeight);
+    document.getElementById('bg').appendChild(renderer.domElement);
+
+    /* ---------- wireframe conspiracy grid ---------- */
+    const grid = new THREE.GridHelper(120, 60, 0x39ff14, 0x39ff14);
+    grid.material.opacity = .22;
+    grid.material.transparent = true;
+    scene.add(grid);
+
+    /* ---------- flying shards (glitchy boxes) ---------- */
+    const shards = [];
+    for (let i = 0; i < 66; i++) {
+      const g = new THREE.BoxGeometry(.4,.4,.4);
+      const m = new THREE.MeshBasicMaterial({ color:0x39ff14, wireframe:true });
+      const s = new THREE.Mesh(g,m);
+      s.position.set(
+        (Math.random()-.5)*60,
+        Math.random()*20,
+        (Math.random()-.5)*60
+      );
+      s.userData = { speed: Math.random()*.015+.005 };
+      shards.push(s);
+      scene.add(s);
+    }
+
+    /* ========== BGGG – Background Gremlin Group ========== */
+    const gremlins = [];
+    const gremlinMat = new THREE.MeshBasicMaterial({ color:0x39ff14, wireframe:true });
+    for (let i = 0; i < 33; i++) {
+      const g = new THREE.ConeGeometry(.3, .8, 4);
+      const s = new THREE.Mesh(g, gremlinMat);
+      const angle = Math.random()*Math.PI*2;
+      const radius = 25+Math.random()*10;
+      s.position.set(Math.cos(angle)*radius, 8+Math.random()*6, Math.sin(angle)*radius);
+      s.userData = { angle, radius, speed: .002+Math.random()*.003, yOffset: Math.random()*Math.PI*2 };
+      gremlins.push(s);
+      scene.add(s);
+    }
+    camera.position.set(0,14,28);
+    camera.lookAt(0,0,0);
+
+    function animate(){
+      requestAnimationFrame(animate);
+      shards.forEach(sh=>{
+        sh.rotation.x+=sh.userData.speed;
+        sh.rotation.y+=sh.userData.speed*1.3;
+        sh.position.y += Math.sin(Date.now()*.001+sh.position.x)*.01;
+      });
+      gremlins.forEach(g=>{
+        g.userData.angle += g.userData.speed;
+        g.position.x = Math.cos(g.userData.angle)*g.userData.radius;
+        g.position.z = Math.sin(g.userData.angle)*g.userData.radius;
+        g.position.y = 8+Math.sin(Date.now()*.001+g.userData.yOffset)*2;
+        g.rotation.y += .02;
+      });
+      renderer.render(scene,camera);
+    }
+    animate();
+    addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth,innerHeight);
+    });
+
+    /* ========== ENCODER + DOWNLOADER ========== */
+    const screen = document.getElementById('screen');
+    const picker = document.getElementById('picker');
+    const trigger = document.getElementById('trigger');
+    const queueBadge = document.getElementById('q');
+
+    let autoScroll = true;
+    let queue = 0;
+
+    function print(msg, cls='cmd'){
+      const span = document.createElement('span');
+      span.className = cls;
+      span.textContent = '> ' + msg;
+      screen.appendChild(span);
+      screen.appendChild(document.createElement('br'));
+      if (autoScroll) screen.scrollTop = screen.scrollHeight;
+    }
+
+    trigger.onclick = () => picker.click();
+
+    picker.onchange = async (e) => {
+      const files = Array.from(e.target.files);
+      if (!files.length) { print('no payload detected', 'err'); return; }
+
+      queue += files.length;
+      queueBadge.textContent = `queue: ${queue}`;
+      print(`incoming packet(s): ${files.length}`);
+
+      for (const file of files) {
+        print(`handling ${file.name} ...`);
+        try {
+          const base = await fileToBase(file);
+          const txtName = file.name.replace(/\.[^.]+$/, '') + '.txt';
+          saveAsBase64Txt(base, txtName);
+          print(`${file.name}  ->  ${txtName}  (${base.length} chars)`, 'ok');
+        } catch (o) {
+          print(`fail: ${o.message}`, 'err');
+        } finally {
+          queue--;
+          queueBadge.textContent = `queue: ${queue}`;
+        }
+      }
+      print('standby...');
+    };
+
+    function fileToBase(file){
+      return new Promise((res, rej)=>{
+        const reader = new FileReader();
+        reader.onload  = () => res(reader.result);
+        reader.onerror = () => rej(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function saveAsBase64Txt(dataUrl, fileName){
+      const blob = new Blob([dataUrl], { type: 'text/plain' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    /* ========== EASTER-EGG KEYBOARD ========== */
+    addEventListener('keydown', e=>{
+      if (e.repeat) return;
+      switch(e.key.toLowerCase()){
+        case 'd': /* dark/redacted mode */
+          document.body.classList.toggle('redacted');
+          print('palette swap: REDACTED', 'cmd');
+          break;
+        case 'g': /* glitch burst */
+          document.body.style.animation = 'glitch .3s';
+          setTimeout(()=>document.body.style.animation='',300);
+          print('BGGG glitch burst', 'cmd');
+          break;
+        case 's': /* toggle scroll */
+          autoScroll = !autoScroll;
+          print(`auto-scroll ${autoScroll?'ON':'OFF'}`, 'cmd');
+          break;
+        case 'h': /* help */
+          print('hotkeys: [D] redact  [G] glitch  [S] scroll  [H] help', 'cmd');
+          break;
+      }
+    });
+
+    /* boot sequence */
+    print('BOOT: OPERATION PHANTOM v2.1  (BGGG online)');
+    print('awaiting courier packets...  (press H for hotkeys)');
+  </script>
+</body>
+</html>

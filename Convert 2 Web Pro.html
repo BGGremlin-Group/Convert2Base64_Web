@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Base64 Encoder Node :: BG GREMLIN GROUP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    /* --------------  RESET + CRT BASE  -------------- */
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;height:100vh;background:#000;color:#39ff14;font:0.85rem/1.4 "Courier New",monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;transition:filter .3s}
+    body::after{content:"";position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0,rgba(0,0,0,.18) 1px,transparent 1px,transparent 2px);pointer-events:none;z-index:1000}
+    @keyframes flick{0%,100%{opacity:1}50%{opacity:.92}}
+    @keyframes glitch{0%{filter:none}20%{filter:invert(1) hue-rotate(90deg)}40%{filter:invert(0) hue-rotate(180deg)}60%{filter:invert(1) hue-rotate(270deg)}80%{filter:invert(0) hue-rotate(360deg)}100%{filter:none}}
+    header{position:absolute;top:1rem;text-align:center;animation:flick .12s infinite}
+    h1{font-size:1.4rem;letter-spacing:.2em;text-shadow:0 0 6px currentColor}
+    .sub{font-size:.7rem;color:#adadad;margin-top:.3rem}
+
+    /* --------------  LAYOUT  -------------- */
+    #bg{position:fixed;inset:0;z-index:-1}
+    #console{width:90%;max-width:800px;background:rgba(10,25,10,.85);border:1px solid;border-color:#39ff14;box-shadow:0 0 15px currentColor,inset 0 0 10px rgba(57,255,20,.4);padding:1.2rem;display:flex;flex-direction:column;gap:.6rem;z-index:10}
+    #screen{flex:1;background:#000;border:1px solid;border-color:#39ff14;padding:.6rem;font-size:.75rem;white-space:pre-wrap;overflow-y:auto;max-height:45vh}
+    .cmd{color:#39ff14}.err{color:#ff4d00}.ok{color:#39ff14}.info{color:#00ffff}
+    input[type=file]{display:none}
+    #trigger{width:100%;padding:.7rem;background:#000;border:2px solid;border-color:#39ff14;color:#39ff14;font:inherit;cursor:pointer;transition:.2s;text-transform:uppercase;letter-spacing:.15em}
+    #trigger:hover{background:#39ff14;color:#000;box-shadow:0 0 20px #39ff14}
+    #trigger:active{transform:scale(.98)}
+    footer{position:absolute;bottom:1rem;font-size:.6rem;color:#444;text-align:center}
+
+    /* --------------  REDACTED THEME  -------------- */
+    body.redacted{color:#ff003c}
+    body.redacted #console,body.redacted #screen,body.redacted #trigger,body.redacted #modeToggle,body.redacted #opts{border-color:#ff003c;box-shadow:0 0 15px #ff003c,inset 0 0 10px rgba(255,0,60,.4)}
+    body.redacted h1{text-shadow:0 0 6px #ff003c}
+    body.redacted .sub{color:#6b0000}
+
+    /* --------------  OPTIONS PANEL  -------------- */
+    #opts{display:flex;flex-wrap:wrap;gap:.4rem;font-size:.7rem;border:1px solid;border-color:#39ff14;padding:.4rem .6rem;background:rgba(0,0,0,.5)}
+    #opts label{cursor:pointer;display:flex;align-items:center;gap:.3rem}
+    #modeToggle{margin-left:auto;padding:.2rem .5rem;background:#000;border:1px solid;border-color:#39ff14;color:#39ff14;cursor:pointer}
+    body.redacted #modeToggle{border-color:#ff003c;color:#ff003c}
+  </style>
+</head>
+<body>
+  <div id="bg"></div>
+
+  <header>
+    <h1>[Convert 2 Base64 / Raw / CSS / HTML]</h1>
+    <div class="sub">// uplink to encoder node // classified // BGGG active</div>
+  </header>
+
+  <main id="console">
+    <div id="screen"></div>
+
+    <div id="opts">
+      <label title="Output format"><input type="radio" name="out" value="b64" checked> B64 data-uri</label>
+      <label><input type="radio" name="out" value="raw"> Raw SVG</label>
+      <label><input type="radio" name="out" value="css"> CSS class</label>
+      <label><input type="radio" name="out" value="html"> HTML img</label>
+      <button id="modeToggle" title="palette swap">RED ▾</button>
+    </div>
+
+    <input type="file" id="picker" multiple accept="*/*"/>
+    <button id="trigger">[INITIATE]</button>
+  </main>
+
+  <footer>
+    <span id="q">queue: 0</span> · bggg systems · do not distribute
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    /* ============================================================
+       THREE.JS  –  wireframe grid + flying shards + gremlin cones
+    ============================================================ */
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 1000);
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(innerWidth, innerHeight);
+    document.getElementById('bg').appendChild(renderer.domElement);
+
+    const grid = new THREE.GridHelper(120, 60, 0x39ff14, 0x39ff14);
+    grid.material.opacity = .22; grid.material.transparent = true;
+    scene.add(grid);
+
+    const shards = [], gremlins = [];
+    const mat = (c, w = true) => new THREE.MeshBasicMaterial({ color: c, wireframe: w });
+    for (let i = 0; i < 66; i++) {
+      const s = new THREE.Mesh(new THREE.BoxGeometry(.4,.4,.4), mat(0x39ff14));
+      s.position.set((Math.random()-.5)*60, Math.random()*20, (Math.random()-.5)*60);
+      s.userData = { speed: Math.random()*.015+.005 };
+      shards.push(s); scene.add(s);
+    }
+    for (let i = 0; i < 33; i++) {
+      const s = new THREE.Mesh(new THREE.ConeGeometry(.3, .8, 4), mat(0x39ff14));
+      const ang = Math.random()*Math.PI*2, rad = 25+Math.random()*10;
+      s.position.set(Math.cos(ang)*rad, 8+Math.random()*6, Math.sin(ang)*rad);
+      s.userData = { angle: ang, radius: rad, speed: .002+Math.random()*.003, yOff: Math.random()*Math.PI*2 };
+      gremlins.push(s); scene.add(s);
+    }
+    camera.position.set(0,14,28); camera.lookAt(0,0,0);
+
+    function animate(){
+      requestAnimationFrame(animate);
+      shards.forEach(sh=>{ sh.rotation.x+=sh.userData.speed; sh.rotation.y+=sh.userData.speed*1.3; sh.position.y+=Math.sin(Date.now()*.001+sh.position.x)*.01; });
+      gremlins.forEach(g=>{ g.userData.angle+=g.userData.speed; g.position.x=Math.cos(g.userData.angle)*g.userData.radius; g.position.z=Math.sin(g.userData.angle)*g.userData.radius; g.position.y=8+Math.sin(Date.now()*.001+g.userData.yOff)*2; g.rotation.y+=.02; });
+      renderer.render(scene,camera);
+    }
+    animate();
+    addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+
+    /* ============================================================
+       ENCODER CORE
+    ============================================================ */
+    const screen   = document.getElementById('screen');
+    const picker   = document.getElementById('picker');
+    const trigger  = document.getElementById('trigger');
+    const queueBadge=document.getElementById('q');
+    const modeBtn  = document.getElementById('modeToggle');
+
+    let autoScroll=true, queue=0;
+
+    function print(msg,cls='cmd'){ 
+      const span=document.createElement('span'); span.className=cls; span.textContent='> '+msg;
+      screen.appendChild(span); screen.appendChild(document.createElement('br'));
+      if(autoScroll) screen.scrollTop=screen.scrollHeight;
+    }
+
+    trigger.onclick=()=>picker.click();
+
+    picker.onchange=async(e)=>{
+      const files=[...e.target.files]; if(!files.length){print('no payload','err'); return;}
+      queue+=files.length; queueBadge.textContent=`queue: ${queue}`;
+      print(`incoming: ${files.length} file(s)`);
+      for(const file of files){
+        print(`handling ${file.name} ...`);
+        try{
+          const dataUrl=await fileToData(file);
+          const outFmt=[...document.querySelectorAll('#opts input')].find(r=>r.checked).value;
+          const baseName=file.name.replace(/\.[^.]+$/,'');
+          let outBlob, outName;
+          switch(outFmt){
+            case 'raw':
+              if(file.type!=='image/svg+xml') throw new Error('raw mode only for SVG');
+              const raw=decodeURIComponent(atob(dataUrl.split(',')[1]));
+              outBlob=new Blob([raw],{type:'text/plain'}); outName=baseName+'_RAW.svg';
+              break;
+            case 'css':
+              outBlob=new Blob([cssTemplate(dataUrl,baseName)],{type:'text/plain'}); outName=baseName+'.css';
+              break;
+            case 'html':
+              outBlob=new Blob([htmlTemplate(dataUrl,baseName)],{type:'text/plain'}); outName=baseName+'.html';
+              break;
+            default: // b64
+              outBlob=new Blob([dataUrl],{type:'text/plain'}); outName=baseName+'.txt';
+          }
+          saveBlob(outBlob,outName);
+          print(`saved → ${outName} (${outBlob.size} B)`,'ok');
+        }catch(o){ print(`fail: ${o.message}`,'err'); }
+        queue--; queueBadge.textContent=`queue: ${queue}`;
+      }
+      print('standby...');
+    };
+
+    function fileToData(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(f); }); }
+    function saveBlob(blob,name){ const u=URL.createObjectURL(blob); const a=Object.assign(document.createElement('a'),{href:u,download:name}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(u); }
+    function cssTemplate(uri,name){ return `.${name}{\n  width:64px; height:64px;\n  background:url('${uri}') center/cover no-repeat;\n}`; }
+    function htmlTemplate(uri,name){ return `<img src="${uri}" alt="${name}" />`; }
+
+    /* ============================================================
+       EASTER-EGG KEYS
+    ============================================================ */
+    addEventListener('keydown',e=>{
+      if(e.repeat)return;
+      switch(e.key.toLowerCase()){
+        case 'd': document.body.classList.toggle('redacted'); print('palette swap: REDACTED','cmd'); break;
+        case 'g': document.body.style.animation='glitch .3s'; setTimeout(()=>document.body.style.animation='',300); print('BGGG glitch','cmd'); break;
+        case 's': autoScroll=!autoScroll; print(`auto-scroll ${autoScroll?'ON':'OFF'}`,'cmd'); break;
+        case 'h': print('hotkeys: [D] redact  [G] glitch  [S] scroll  [H] help','cmd'); break;
+      }
+    });
+
+    /* boot */
+    print('BOOT: OPERATION PHANTOM v3  (BGGG online)'); print('awaiting packets...  press H for hotkeys','info');
+  </script>
+</body>
+</html>
