@@ -87,3 +87,4 @@ Issues & PRs welcome 🎉
 ## 📜 License
 
 MIT © Background Gremlin Group
+*Creating Unique Tools for Unique Individuals*
