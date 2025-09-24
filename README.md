@@ -54,20 +54,23 @@ Drop any file → instant Base-64, raw SVG, CSS or HTML. No installs, no servers
 
 ## 🌟 Change Log
 
-### v3.0.0 (latest)
+### v3.0.0 Pro (latest)
 - Added CSS & HTML quick-export radios  
 - Improved queue counter & logging  
 - Unified blob saver
 
-### v2.0.0
+### v2.0.0 webV2
 - Toggle Base-64 ↔ raw SVG  
 - Retained CRT UI + Three.js scene
 
-### v1.0.0
+### v1.0.0 web
 - Initial release  
 - File → Base-64 data-uri only  
 - Drag-and-drop + glitch easter-eggs
 
+V1. Web
+V2. webV2
+V3. Pro (current)
 ---
 
 ## 🧪 Browser Support
